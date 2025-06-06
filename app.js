@@ -12,8 +12,19 @@ function addMessage(sender, text) {
   return messageDiv;
 }
 
+function classifyIntent(text) {
+  const lower = text.toLowerCase();
+  if (lower.includes("legal aid") || lower.includes("free lawyer")) return "legal_aid";
+  if (lower.includes("domestic violence") || lower.includes("abuse")) return "domestic_violence";
+  if (lower.includes("child") || lower.includes("juvenile")) return "child_rights";
+  if (lower.includes("sc/st") || lower.includes("caste")) return "sc_st_protection";
+  return "general_legal_help";
+}
+
 async function sendMessage() {
   const message = userInput.value.trim();
+  const lang = languageSelect.value;
+
   if (!message) return;
 
   addMessage("user", message);
@@ -21,11 +32,13 @@ async function sendMessage() {
 
   const typingDiv = addMessage("bot", "Typing...");
 
+  const intent = classifyIntent(message);
+
   try {
-    const response = await fetch("/api/chat", {
+    const response = await fetch("https://doj-backend.vercel.app/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message })  // ✅ only send 'message'
+      body: JSON.stringify({ prompt: message, language: lang, intent: intent })
     });
 
     const data = await response.json();
@@ -36,7 +49,6 @@ async function sendMessage() {
   }
 }
 
-// Handle send button and Enter key
 sendBtn.addEventListener("click", sendMessage);
 userInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
