@@ -1,28 +1,31 @@
-// api/chat.js
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST allowed' });
-  }
+  if (req.method !== "POST") return res.status(405).end("Method Not Allowed");
 
-  const { prompt, language, intent } = req.body;
+  const { message } = req.body;
+
+  if (!message) return res.status(400).json({ response: "Message missing." });
+
+  const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-pro" });
+
+  const prompt = `You are a legal AI assistant that helps users understand their legal rights under Indian law. Be concise, clear, and always cite the relevant laws, acts, or rights when possible.
+
+User message: ${message}
+
+Answer in simple language. If unsure or if the query needs a real lawyer, advise accordingly.`;
 
   try {
-    // Gemini fetch (replace with your Gemini API key)
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyBhCyXBuD4oK4k3dGVL_kWKE6_80uxm38Y", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    const result = await response.json();
-    const reply = result.candidates?.[0]?.content?.parts?.[0]?.text || "No response from Gemini.";
-
-    res.status(200).json({ response: reply });
+    const text = result.response.text();
+    res.status(200).json({ response: text });
   } catch (err) {
     console.error("Gemini error:", err);
-    res.status(500).json({ response: "⚠️ Gemini request failed." });
+    res.status(500).json({ response: "Error from Gemini API." });
   }
 }
